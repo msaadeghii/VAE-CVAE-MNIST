@@ -28,14 +28,27 @@ def main(args):
         download=True)
     data_loader = DataLoader(
         dataset=dataset, batch_size=args.batch_size, shuffle=True)
-
-    def loss_fn(recon_x, x, mean, log_var):
-        BCE = torch.nn.functional.binary_cross_entropy(
-            recon_x.view(-1, 28*28), x.view(-1, 28*28), reduction='sum')
-        KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
-
-        return (BCE + KLD) / x.size(0)
-
+    
+    if args.loss == 'bce':
+        
+        def loss_fn(recon_x, x, mean, log_var, invSigma = None):
+            BCE = torch.nn.functional.binary_cross_entropy(
+                recon_x.view(-1, 28*28), x.view(-1, 28*28), reduction='sum')
+            KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
+    
+            return (BCE + KLD) / x.size(0)
+        
+    elif args.loss == 'mse':
+        
+        def loss_fn(recon_x, x, mean, log_var, invSigma = None):
+            xdiff = x.view(-1, 28*28) - recon_x.view(-1, 28*28)
+            MSE = 0.5 *torch.trace(invSigma.mm(torch.t(xdiff).mm(xdiff)))
+            KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
+    
+            return (MSE + KLD) / x.size(0)
+    else:
+        raise NameError('Wrong loss name. Choose either bce or mse.')
+        
     vae = VAE(
         encoder_layer_sizes=args.encoder_layer_sizes,
         latent_size=args.latent_size,
@@ -46,11 +59,13 @@ def main(args):
     optimizer = torch.optim.Adam(vae.parameters(), lr=args.learning_rate)
 
     logs = defaultdict(list)
-
+    invSigma = torch.eye(args.encoder_layer_sizes[0])
+    
     for epoch in range(args.epochs):
 
         tracker_epoch = defaultdict(lambda: defaultdict(dict))
-
+        vae.train()
+        
         for iteration, (x, y) in enumerate(data_loader):
 
             x, y = x.to(device), y.to(device)
@@ -66,7 +81,7 @@ def main(args):
                 tracker_epoch[id]['y'] = z[i, 1].item()
                 tracker_epoch[id]['label'] = yi.item()
 
-            loss = loss_fn(recon_x, x, mean, log_var)
+            loss = loss_fn(recon_x, x, mean, log_var, invSigma)
 
             optimizer.zero_grad()
             loss.backward()
@@ -114,8 +129,27 @@ def main(args):
         g.savefig(os.path.join(
             args.fig_root, str(ts), "E{:d}-Dist.png".format(epoch)),
             dpi=300)
+        
+    # Update the (inverse) covariance matrix:
+    if args.loss == 'mse':
+        
+        Sigma = torch.zeros(args.encoder_layer_sizes[0],args.encoder_layer_sizes[0])
+        vae.eval()
+        
+        for iteration, (x, y) in enumerate(data_loader):
+    
+            x, y = x.to(device), y.to(device)
+    
+            if args.conditional:
+                recon_x, mean, log_var, z = vae(x, y)
+            else:
+                recon_x, mean, log_var, z = vae(x)
+            
+            xdiff = x - recon_x
+            Sigma += torch.t(xdiff).mm(xdiff)  
 
-
+        invSigma = torch.inverse(Sigma)
+        
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
@@ -128,6 +162,7 @@ if __name__ == '__main__':
     parser.add_argument("--latent_size", type=int, default=2)
     parser.add_argument("--print_every", type=int, default=100)
     parser.add_argument("--fig_root", type=str, default='figs')
+    parser.add_argument("--loss", type=str, default='bce')
     parser.add_argument("--conditional", action='store_true')
 
     args = parser.parse_args()
