@@ -1,7 +1,7 @@
 # Variational Autoencoder & Conditional Variational Autoenoder on MNIST
 
 
-This is a forked version of the VAE-CVAE-MNIST provided by timbmg. I just made several modifications which are summarized below:
+This is a forked version of the VAE-CVAE-MNIST provided by Tim Baumgärtner (https://github.com/timbmg/VAE-CVAE-MNIST). I just made several modifications which are summarized below:
 
 1. I modified "train.py" to include the case corresponding to using a Gaussian MLP for the decoder. In this case, the reconstruction term of the loss is no longer BCE. In fact, I assumed a Gaussian observation model in which the covariance matrix is unknown. In contrast to the mean, which is modelled via a neural network (decoder), in each epoch, the covariance matrix is updated using the learned decoder, and it admits a closed-form solution.
 
