@@ -130,26 +130,29 @@ def main(args):
             args.fig_root, str(ts), "E{:d}-Dist.png".format(epoch)),
             dpi=300)
         
-    # Update the (inverse) covariance matrix:
-    if args.loss == 'mse':
-        
-        Sigma = torch.zeros(args.encoder_layer_sizes[0],args.encoder_layer_sizes[0])
-        vae.eval()
-        
-        for iteration, (x, y) in enumerate(data_loader):
-    
-            x, y = x.to(device), y.to(device)
-    
-            if args.conditional:
-                recon_x, mean, log_var, z = vae(x, y)
-            else:
-                recon_x, mean, log_var, z = vae(x)
+        # Update the (inverse) covariance matrix:
+        if args.loss == 'mse':
             
-            xdiff = x - recon_x
-            Sigma += torch.t(xdiff).mm(xdiff)  
-
-        invSigma = torch.inverse(Sigma)
-        
+            with torch.no_grad():  
+                
+                Sigma = torch.zeros(args.encoder_layer_sizes[0],args.encoder_layer_sizes[0])
+                vae.eval()
+                
+                for iteration, (x, y) in enumerate(data_loader):
+            
+                    x, y = x.to(device), y.to(device)
+            
+                    if args.conditional:
+                        recon_x, mean, log_var, z = vae(x, y)
+                    else:
+                        recon_x, mean, log_var, z = vae(x)
+                    
+                    xdiff = x.view(-1, 28*28) - recon_x.view(-1, 28*28)
+                    Sigma += torch.t(xdiff).mm(xdiff)  
+                    
+                invSigma = torch.inverse(Sigma/len(data_loader.dataset)+1e-3*torch.eye(args.encoder_layer_sizes[0]))
+                Sigma = None
+                
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
