@@ -59,7 +59,7 @@ def main(args):
     optimizer = torch.optim.Adam(vae.parameters(), lr=args.learning_rate)
 
     logs = defaultdict(list)
-    invSigma = torch.eye(args.encoder_layer_sizes[0])
+    invSigma = torch.eye(28*28)
     
     for epoch in range(args.epochs):
 
@@ -80,7 +80,7 @@ def main(args):
                 tracker_epoch[id]['x'] = z[i, 0].item()
                 tracker_epoch[id]['y'] = z[i, 1].item()
                 tracker_epoch[id]['label'] = yi.item()
-
+                
             loss = loss_fn(recon_x, x, mean, log_var, invSigma)
 
             optimizer.zero_grad()
@@ -135,7 +135,7 @@ def main(args):
             
             with torch.no_grad():  
                 
-                Sigma = torch.zeros(args.encoder_layer_sizes[0],args.encoder_layer_sizes[0])
+                Sigma = torch.zeros(28*28,28*28)
                 vae.eval()
                 
                 for iteration, (x, y) in enumerate(data_loader):
@@ -149,10 +149,22 @@ def main(args):
                     
                     xdiff = x.view(-1, 28*28) - recon_x.view(-1, 28*28)
                     Sigma += torch.t(xdiff).mm(xdiff)  
-                    
-                invSigma = torch.inverse(Sigma/len(data_loader.dataset)+1e-3*torch.eye(args.encoder_layer_sizes[0]))
-                Sigma = None
-                
+                   
+                Sigma = Sigma/len(data_loader.dataset)+1e-3*torch.eye(28*28)
+                invSigma = torch.inverse(Sigma)
+                                
+        plt.figure()
+        plt.imshow(Sigma.data.numpy())
+        plt.axis('off')        
+        plt.savefig(
+            os.path.join(args.fig_root, str(ts),
+                         "Sigma{:d}.png".format(epoch)),
+            dpi=300)
+        plt.clf()
+        plt.close('all')        
+           
+        Sigma = None
+        
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
