@@ -6,7 +6,7 @@ from utils import idx2onehot
 
 class VAE(nn.Module):
 
-    def __init__(self, encoder_layer_sizes, latent_size, decoder_layer_sizes,
+    def __init__(self, encoder_layer_sizes, latent_size, decoder_layer_sizes, device,
                  conditional=False, num_labels=0):
 
         super().__init__()
@@ -18,8 +18,9 @@ class VAE(nn.Module):
         assert type(latent_size) == int
         assert type(decoder_layer_sizes) == list
 
+        self.device = device
         self.latent_size = latent_size
-
+        
         self.encoder = Encoder(
             encoder_layer_sizes, latent_size, conditional, num_labels)
         self.decoder = Decoder(
@@ -43,7 +44,7 @@ class VAE(nn.Module):
     def inference(self, n=1, c=None):
 
         batch_size = n
-        z = torch.randn([batch_size, self.latent_size])
+        z = torch.randn([batch_size, self.latent_size]).to(self.device)
 
         recon_x = self.decoder(z, c)
 
