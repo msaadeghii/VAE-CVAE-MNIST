@@ -52,14 +52,14 @@ def main(args):
     vae = VAE(
         encoder_layer_sizes=args.encoder_layer_sizes,
         latent_size=args.latent_size,
-        decoder_layer_sizes=args.decoder_layer_sizes,
+        decoder_layer_sizes=args.decoder_layer_sizes, device = device,
         conditional=args.conditional,
         num_labels=10 if args.conditional else 0).to(device)
 
     optimizer = torch.optim.Adam(vae.parameters(), lr=args.learning_rate)
 
     logs = defaultdict(list)
-    invSigma = torch.eye(28*28)
+    invSigma = torch.eye(28*28).to(device)
     
     for epoch in range(args.epochs):
 
@@ -107,7 +107,7 @@ def main(args):
                         plt.text(
                             0, 0, "c={:d}".format(c[p].item()), color='black',
                             backgroundcolor='white', fontsize=8)
-                    plt.imshow(x[p].view(28, 28).data.numpy())
+                    plt.imshow(x[p].view(28, 28).cpu().data.numpy())
                     plt.axis('off')
 
                 if not os.path.exists(os.path.join(args.fig_root, str(ts))):
@@ -135,7 +135,7 @@ def main(args):
             
             with torch.no_grad():  
                 
-                Sigma = torch.zeros(28*28,28*28)
+                Sigma = torch.zeros(28*28,28*28).to(device)
                 vae.eval()
                 
                 for iteration, (x, y) in enumerate(data_loader):
@@ -150,11 +150,11 @@ def main(args):
                     xdiff = x.view(-1, 28*28) - recon_x.view(-1, 28*28)
                     Sigma += torch.t(xdiff).mm(xdiff)  
                    
-                Sigma = Sigma/len(data_loader.dataset)+1e-3*torch.eye(28*28)
+                Sigma = Sigma/len(data_loader.dataset)+1e-3*torch.eye(28*28).to(device)
                 invSigma = torch.inverse(Sigma)
                                 
         plt.figure()
-        plt.imshow(Sigma.data.numpy())
+        plt.imshow(Sigma.cpu().data.numpy())
         plt.axis('off')        
         plt.savefig(
             os.path.join(args.fig_root, str(ts),
