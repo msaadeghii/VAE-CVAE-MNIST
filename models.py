@@ -30,12 +30,10 @@ class VAE(nn.Module):
         if x.dim() > 2:
             x = x.view(-1, 28*28)
 
-        batch_size = x.size(0)
-
         means, log_var = self.encoder(x, c)
 
         std = torch.exp(0.5 * log_var)
-        eps = torch.randn([batch_size, self.latent_size])
+        eps = torch.randn_like(std)
         z = eps * std + means
 
         recon_x = self.decoder(z, c)
