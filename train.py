@@ -24,7 +24,7 @@ def main(args):
     ts = time.time()
 
     dataset = MNIST(
-        root='data', train=True, transform=transforms.ToTensor(),
+        root= args.root, train=True, transform=transforms.ToTensor(),
         download=True)
     data_loader = DataLoader(
         dataset=dataset, batch_size=args.batch_size, shuffle=True)
@@ -179,7 +179,8 @@ if __name__ == '__main__':
     parser.add_argument("--fig_root", type=str, default='figs')
     parser.add_argument("--loss", type=str, default='bce')
     parser.add_argument("--conditional", action='store_true')
-
+    parser.add_argument("--root", type=str, default='data')
+    
     args = parser.parse_args()
 
     main(args)
