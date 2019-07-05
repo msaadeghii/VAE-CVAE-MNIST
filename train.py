@@ -152,19 +152,26 @@ def main(args):
                    
                 Sigma = Sigma/len(data_loader.dataset)+1e-3*torch.eye(28*28).to(device)
                 invSigma = torch.inverse(Sigma)
-                                
-        plt.figure()
-        plt.imshow(Sigma.cpu().data.numpy())
-        plt.axis('off')        
-        plt.savefig(
-            os.path.join(args.fig_root, str(ts),
-                         "Sigma{:d}.png".format(epoch)),
-            dpi=300)
-        plt.clf()
-        plt.close('all')        
-           
-        Sigma = None
+          
+        if args.loss == 'mse':    
+                 
+            plt.figure()
+            plt.imshow(Sigma.cpu().data.numpy())
+            plt.axis('off')        
+            plt.savefig(
+                os.path.join(args.fig_root, str(ts),
+                             "Sigma{:d}.png".format(epoch)),
+                dpi=300)
+            plt.clf()
+            plt.close('all')        
+               
+            Sigma = None
         
+        
+    # save final model
+    save_file = os.path.join(args.fig_root, str(ts), 'final_model.pt')
+    torch.save(vae.state_dict(), save_file)
+    
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
