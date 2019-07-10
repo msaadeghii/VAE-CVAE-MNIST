@@ -1,5 +1,4 @@
 import os
-import time
 import torch
 import argparse
 import pandas as pd
@@ -9,6 +8,7 @@ from torchvision import transforms
 from torchvision.datasets import MNIST
 from torch.utils.data import DataLoader
 from collections import defaultdict
+import numpy as np
 
 from models import VAE
 
@@ -20,8 +20,6 @@ def main(args):
         torch.cuda.manual_seed(args.seed)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    ts = time.time()
 
     dataset = MNIST(
         root= args.root, train=True, transform=transforms.ToTensor(),
@@ -110,13 +108,13 @@ def main(args):
                     plt.imshow(x[p].view(28, 28).cpu().data.numpy())
                     plt.axis('off')
 
-                if not os.path.exists(os.path.join(args.fig_root, str(ts))):
+                if not os.path.exists(os.path.join(args.fig_root, args.vae_name)):
                     if not(os.path.exists(os.path.join(args.fig_root))):
                         os.mkdir(os.path.join(args.fig_root))
-                    os.mkdir(os.path.join(args.fig_root, str(ts)))
+                    os.mkdir(os.path.join(args.fig_root, args.vae_name))
 
                 plt.savefig(
-                    os.path.join(args.fig_root, str(ts),
+                    os.path.join(args.fig_root, args.vae_name,
                                  "E{:d}I{:d}.png".format(epoch, iteration)),
                     dpi=300)
                 plt.clf()
@@ -127,7 +125,7 @@ def main(args):
             x='x', y='y', hue='label', data=df.groupby('label').head(100),
             fit_reg=False, legend=True)
         g.savefig(os.path.join(
-            args.fig_root, str(ts), "E{:d}-Dist.png".format(epoch)),
+            args.fig_root, args.vae_name, "E{:d}-Dist.png".format(epoch)),
             dpi=300)
         
         # Update the (inverse) covariance matrix:
@@ -159,17 +157,19 @@ def main(args):
             plt.imshow(Sigma.cpu().data.numpy())
             plt.axis('off')        
             plt.savefig(
-                os.path.join(args.fig_root, str(ts),
+                os.path.join(args.fig_root, args.vae_name,
                              "Sigma{:d}.png".format(epoch)),
                 dpi=300)
             plt.clf()
             plt.close('all')        
                
             Sigma = None
-        
+            
+    # save invSigma:   
+    np.save(os.path.join(args.fig_root, args.vae_name, "inSigma.npy"), invSigma.cpu().data.numpy())        
         
     # save final model
-    save_file = os.path.join(args.fig_root, str(ts), 'final_model.pt')
+    save_file = os.path.join(args.fig_root, args.vae_name, 'final_model.pt')
     torch.save(vae.state_dict(), save_file)
     
 if __name__ == '__main__':
@@ -187,6 +187,7 @@ if __name__ == '__main__':
     parser.add_argument("--loss", type=str, default='bce')
     parser.add_argument("--conditional", action='store_true')
     parser.add_argument("--root", type=str, default='data')
+    parser.add_argument("--vae_name", type=str, default='test')
     
     args = parser.parse_args()
 
